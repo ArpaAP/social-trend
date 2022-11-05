@@ -1,0 +1,54 @@
+{
+  "medias": [
+    {
+      "name": "경향신문",
+      "category": "종합",
+      "code": 32
+    },
+    {
+      "name": "국민일보",
+      "category": "종합",
+      "code": 5
+    },
+    {
+      "name": "동아일보",
+      "category": "종합",
+      "code": 20
+    },
+    {
+      "name": "문화일보",
+      "category": "종합",
+      "code": 21
+    },
+    {
+      "name": "서울신문",
+      "category": "종합",
+      "code": 81
+    },
+    {
+      "name": "세계일보",
+      "category": "종합",
+      "code": 22
+    },
+    {
+      "name": "조선일보",
+      "category": "종합",
+      "code": 23
+    },
+    {
+      "name": "중앙일보",
+      "category": "종합",
+      "code": 25
+    },
+    {
+      "name": "한겨레",
+      "category": "종합",
+      "code": 28
+    },
+    {
+      "name": "한국일보",
+      "category": "종합",
+      "code": 469
+    }
+  ]
+}
