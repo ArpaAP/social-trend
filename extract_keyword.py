@@ -1,55 +1,19 @@
+import os
 import numpy as np
 import itertools
+from collections import Counter
+from tqdm import tqdm
 
 from konlpy.tag import Okt
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
-
-doc = """
-윤석열 대통령이 1일 경기도 부천 한 장례식장에 마련된 이태원 참사 희생자 빈소를 찾아 조문한 뒤 유가족을 위로하고 있다. 대통령실 제공
-
-윤석열 대통령이 이태원 참사 사망자들의 빈소 두 곳을 직접 찾아 조문하고 유가족을 위로했다.
-
-윤 대통령은 1일 저녁 경기도 부천의 한 장례식장에서 이태원 사고로 딸을 잃은 아버지를 위로했다고 대통령실 이재명 부대변인이 이날 서면 브리핑에서 전했다.
-
-윤 대통령은 고인의 부친 손을 붙잡고 “뭐라고 위로의 말씀을 드려야 할지 모르겠다”며 머리를 숙였다. 고인의 남동생에게는 “아버지를 잘 보살펴 드리라”고 당부의 말을 건넸다.
-
-윤 대통령은 이어 서울의 한 장례식장을 찾아 사고로 부인과 딸을 잃은 유가족을 만나 애도했다.
-
-윤석열 대통령이 1일 서울 용산구 이태원역 1번 출구 앞 이태원 참사 추모 공간을 방문, 헌화하고 있다. 대통령실 제공, 연합뉴스
-
-이날 조문은 갑작스러운 사고로 가족을 잃은 유가족에게 위로의 마음을 전하고 싶다는 윤 대통령의 뜻에 따라 이뤄졌다고 이 부대변인은 설명했다.
-
-앞서 윤 대통령은 지난달 31일 서울광장에 마련된 정부 합동분향소를 찾은 데 이어 이날 사고 현장 인근의 합동분향소를 한 차례 더 방문하기도 했다.
-"""
+import sqlite3
 
 JVM_PATH = '/Library/Java/JavaVirtualMachines/zulu-15.jdk/Contents/Home/bin/java'
+os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
 okt = Okt(jvmpath=JVM_PATH)
-
-tokenized_doc = okt.pos(doc)
-tokenized_nouns = ' '.join([word[0] for word in tokenized_doc if word[1] == 'Noun'])
-
-# print('품사 태깅 10개만 출력 :',tokenized_doc[:10])
-# print('명사 추출 :',tokenized_nouns)
-
-n_gram_range = (0, 1)
-
-count = CountVectorizer(ngram_range=n_gram_range).fit([tokenized_nouns])
-candidates = count.get_feature_names_out()
-
-# print('trigram 개수 :',len(candidates))
-# print('trigram 다섯개만 출력 :',candidates[:5])
-
-model = SentenceTransformer('sentence-transformers/xlm-r-100langs-bert-base-nli-stsb-mean-tokens')
-doc_embedding = model.encode([doc])
-candidate_embeddings = model.encode(candidates)
-
-# top_n = 5
-# distances = cosine_similarity(doc_embedding, candidate_embeddings)
-# keywords = [candidates[index] for index in distances.argsort()[0][-top_n:]]
-# print(keywords)
 
 def max_sum_sim(doc_embedding, candidate_embeddings, words, top_n, nr_candidates):
     # 문서와 각 키워드들 간의 유사도
@@ -109,5 +73,51 @@ def mmr(doc_embedding, candidate_embeddings, words, top_n, diversity):
 
     return [words[idx] for idx in keywords_idx]
 
-print(max_sum_sim(doc_embedding, candidate_embeddings, candidates, top_n=15, nr_candidates=20))
-print(mmr(doc_embedding, candidate_embeddings, candidates, top_n=15, diversity=0.4))
+print('loading database')
+
+conn = sqlite3.connect('data-221102-090634.db')
+conn.row_factory = sqlite3.Row
+cur = conn.cursor()
+
+print('filtering blank content')
+docs = [x['content'] for x in cur.execute('SELECT content FROM News LIMIT 100') if x['content']]
+
+print('importing model')
+model = SentenceTransformer('sentence-transformers/xlm-r-100langs-bert-base-nli-stsb-mean-tokens', device='mps')
+
+mss_ls = []
+mmr_ls = []
+
+for doc in tqdm(docs, desc='extracting keywords'):
+    tokenized_doc = okt.pos(doc)
+    tokenized_nouns = ' '.join([word[0] for word in tokenized_doc if word[1] == 'Noun'])
+
+    # print('품사 태깅 10개만 출력 :',tokenized_doc[:10])
+    # print('명사 추출 :',tokenized_nouns)
+
+    n_gram_range = (0, 1)
+
+    count = CountVectorizer(ngram_range=n_gram_range).fit([tokenized_nouns])
+    candidates = count.get_feature_names_out()
+
+    # print('trigram 개수 :',len(candidates))
+    # print('trigram 다섯개만 출력 :',candidates[:5])
+
+    doc_embedding = model.encode([doc])
+    candidate_embeddings = model.encode(candidates)
+
+    # top_n = 5
+    # distances = cosine_similarity(doc_embedding, candidate_embeddings)
+    # keywords = [candidates[index] for index in distances.argsort()[0][-top_n:]]
+    # print(keywords)
+
+    result_mss = max_sum_sim(doc_embedding, candidate_embeddings, candidates, top_n=15, nr_candidates=20)
+    result_mmr = mmr(doc_embedding, candidate_embeddings, candidates, top_n=15, diversity=0.4)
+
+    mss_ls.extend(result_mss)
+    mmr_ls.extend(result_mmr)
+
+mss_c = Counter(mss_ls)
+mmr_c = Counter(mmr_ls)
+
+print(mss_c.most_common(20), mmr_c.most_common(20), sep='\n\n')

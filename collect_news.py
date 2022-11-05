@@ -15,7 +15,7 @@ print('loading database')
 with open('./datas/media.json', 'r', encoding='UTF-8') as f:
     medias = json.load(f)
 
-conn = sqlite3.connect('./data-{}.db'.format(datetime.datetime.now().strftime('%y%m%d-%X')))
+conn = sqlite3.connect('./data-{}.db'.format(datetime.datetime.now().strftime('%y%m%d-%H%M%S')))
 conn.row_factory = sqlite3.Row
 cur = conn.cursor()
 cur.execute('CREATE TABLE IF NOT EXISTS News(headline text, media text, dt text, link text, content text)')
