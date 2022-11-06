@@ -76,11 +76,13 @@ def mmr(doc_embedding, candidate_embeddings, words, top_n, diversity):
 
 print('loading database')
 
-conn = sqlite3.connect('data-221105-202616.db')
+dataname = '221106-153654'
+
+conn = sqlite3.connect(f'data-{dataname}.db')
 conn.row_factory = sqlite3.Row
 cur = conn.cursor()
 
-print('filtering blank content')
+print('filtering empty content')
 docs = [x['content'] for x in cur.execute('SELECT content FROM News') if x['content']]
 
 print('importing model')
@@ -101,7 +103,7 @@ for doc in tqdm(docs, desc='extracting keywords'):
     # print('품사 태깅 10개만 출력 :',tokenized_doc[:10])
     # print('명사 추출 :',tokenized_nouns)
 
-    n_gram_range = (0, 1)
+    n_gram_range = (0, 3)
 
     try:
         count_vector = CountVectorizer(ngram_range=n_gram_range).fit([tokenized_nouns])
@@ -140,7 +142,7 @@ mmr_c = Counter(mmr_ls)
 mss_df = pd.DataFrame(mss_c.most_common())
 mmr_df = pd.DataFrame(mmr_c.most_common())
 
-mss_df.to_csv('mss.csv', index=False, encoding='utf-8-sig')
-mmr_df.to_csv('mmr.csv', index=False, encoding='utf-8-sig')
+mss_df.to_csv(f'mss_{dataname}_{"-".join(n_gram_range)}.csv', index=False, encoding='utf-8-sig')
+mmr_df.to_csv(f'mmr_{dataname}_{"-".join(n_gram_range)}.csv', index=False, encoding='utf-8-sig')
 
 print(mss_c.most_common(20), mmr_c.most_common(20), sep='\n\n')
