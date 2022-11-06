@@ -30,7 +30,8 @@ count = 0
 success_count = 0
 ignore_count = 0
 
-dt = datetime.datetime.now().strftime('%Y%m%d')
+# dt = datetime.datetime.now().strftime('%Y%m%d')
+dt = '20221101'
 
 print('start collecting')
 
@@ -42,7 +43,11 @@ for media in tqdm(medias['medias'], desc='collecting medias'):
         url = 'https://news.naver.com/main/list.naver?mode=LPOD&mid=sec&oid={}&date={}&page={}'.format(str(media['code']).zfill(3), dt, page)
         driver.get(url)
 
-        current_page_button = driver.find_element(By.CSS_SELECTOR, '#main_content > div.paging > strong')
+        try:
+            current_page_button = driver.find_element(By.CSS_SELECTOR, '#main_content > div.paging > strong')
+        except NoSuchElementException:
+            print('ignoring page', page, 'in', media)
+            break
 
         if current_page_button.text != str(page):
             break

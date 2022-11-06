@@ -3,6 +3,7 @@ import numpy as np
 import itertools
 from collections import Counter
 from tqdm import tqdm
+import pandas as pd
 
 from konlpy.tag import Okt
 from sklearn.feature_extraction.text import CountVectorizer
@@ -75,20 +76,25 @@ def mmr(doc_embedding, candidate_embeddings, words, top_n, diversity):
 
 print('loading database')
 
-conn = sqlite3.connect('data-221102-090634.db')
+conn = sqlite3.connect('data-221105-202616.db')
 conn.row_factory = sqlite3.Row
 cur = conn.cursor()
 
 print('filtering blank content')
-docs = [x['content'] for x in cur.execute('SELECT content FROM News LIMIT 100') if x['content']]
+docs = [x['content'] for x in cur.execute('SELECT content FROM News') if x['content']]
 
 print('importing model')
-model = SentenceTransformer('sentence-transformers/xlm-r-100langs-bert-base-nli-stsb-mean-tokens', device='mps')
+model = SentenceTransformer('sentence-transformers/xlm-r-100langs-bert-base-nli-stsb-mean-tokens')
 
 mss_ls = []
 mmr_ls = []
 
+count = 0
+success_count = 0
+ignore_count = 0
+
 for doc in tqdm(docs, desc='extracting keywords'):
+    count += 1
     tokenized_doc = okt.pos(doc)
     tokenized_nouns = ' '.join([word[0] for word in tokenized_doc if word[1] == 'Noun'])
 
@@ -97,8 +103,13 @@ for doc in tqdm(docs, desc='extracting keywords'):
 
     n_gram_range = (0, 1)
 
-    count = CountVectorizer(ngram_range=n_gram_range).fit([tokenized_nouns])
-    candidates = count.get_feature_names_out()
+    try:
+        count_vector = CountVectorizer(ngram_range=n_gram_range).fit([tokenized_nouns])
+    except ValueError:
+        ignore_count += 1
+        continue
+
+    candidates = count_vector.get_feature_names_out()
 
     # print('trigram 개수 :',len(candidates))
     # print('trigram 다섯개만 출력 :',candidates[:5])
@@ -111,13 +122,25 @@ for doc in tqdm(docs, desc='extracting keywords'):
     # keywords = [candidates[index] for index in distances.argsort()[0][-top_n:]]
     # print(keywords)
 
-    result_mss = max_sum_sim(doc_embedding, candidate_embeddings, candidates, top_n=15, nr_candidates=20)
-    result_mmr = mmr(doc_embedding, candidate_embeddings, candidates, top_n=15, diversity=0.4)
+    try:
+        result_mss = max_sum_sim(doc_embedding, candidate_embeddings, candidates, top_n=15, nr_candidates=20)
+        result_mmr = mmr(doc_embedding, candidate_embeddings, candidates, top_n=15, diversity=0.4)
+    except:
+        ignore_count += 1
+        continue
+
+    success_count += 1
 
     mss_ls.extend(result_mss)
     mmr_ls.extend(result_mmr)
 
 mss_c = Counter(mss_ls)
 mmr_c = Counter(mmr_ls)
+
+mss_df = pd.DataFrame(mss_c.most_common())
+mmr_df = pd.DataFrame(mmr_c.most_common())
+
+mss_df.to_csv('mss.csv', index=False, encoding='utf-8-sig')
+mmr_df.to_csv('mmr.csv', index=False, encoding='utf-8-sig')
 
 print(mss_c.most_common(20), mmr_c.most_common(20), sep='\n\n')
