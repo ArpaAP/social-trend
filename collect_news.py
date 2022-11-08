@@ -10,12 +10,20 @@ import sqlite3
 import json
 from tqdm import tqdm
 
+### VARIABLES ###
+
+# 뉴스 기사를 수집하는 시점입니다.
+# dt = datetime.datetime.now().strftime('%Y%m%d')
+dt = '20170310'
+
+###
+
 print('loading database')
 
 with open('./datas/media.json', 'r', encoding='UTF-8') as f:
     medias = json.load(f)
 
-conn = sqlite3.connect('./data-{}.db'.format(datetime.datetime.now().strftime('%y%m%d-%H%M%S')))
+conn = sqlite3.connect('./collection/data-{}.db'.format(datetime.datetime.now().strftime('%y%m%d-%H%M%S')))
 conn.row_factory = sqlite3.Row
 cur = conn.cursor()
 cur.execute('CREATE TABLE IF NOT EXISTS News(headline text, media text, dt text, link text, content text)')
@@ -29,9 +37,6 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), opti
 count = 0
 success_count = 0
 ignore_count = 0
-
-# dt = datetime.datetime.now().strftime('%Y%m%d')
-dt = '20221101'
 
 print('start collecting')
 
@@ -89,7 +94,7 @@ for media in tqdm(medias['medias'], desc='collecting medias'):
         page += 1
 
 print(f'collecting: all {count}, success {success_count}, ignoring {ignore_count} rows')
-print('deleting duplicated...')
+print('deleting duplicated articles...')
 
 cur.execute('DELETE FROM News WHERE rowid NOT IN (SELECT min(rowid) FROM News GROUP BY headline, media, dt)')
 deleted_count = cur.rowcount

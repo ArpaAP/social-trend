@@ -11,10 +11,19 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 import sqlite3
 
-JVM_PATH = '/Library/Java/JavaVirtualMachines/zulu-15.jdk/Contents/Home/bin/java'
-os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
+### VARIABLES ###
 
-okt = Okt(jvmpath=JVM_PATH)
+# collection 폴더에서 불러올 DB입니다. 
+# DB 파일 이름이 data-221107-111306.db 이면 해당 변수는 '221107-111306'이 됩니다.
+dataname = '221107-111306'
+
+# 아래는 M1 아키텍처 기반 MacOS 전용 설정입니다. M1에서는 JVM 경로를 수동으로 지정해야 했습니다.
+# JVM_PATH = '/Library/Java/JavaVirtualMachines/zulu-15.jdk/Contents/Home/bin/java'
+# okt = Okt(jvmpath=JVM_PATH)
+
+###
+
+okt = Okt()
 
 def max_sum_sim(doc_embedding, candidate_embeddings, words, top_n, nr_candidates):
     # 문서와 각 키워드들 간의 유사도
@@ -76,9 +85,7 @@ def mmr(doc_embedding, candidate_embeddings, words, top_n, diversity):
 
 print('loading database')
 
-dataname = '221106-153654'
-
-conn = sqlite3.connect(f'data-{dataname}.db')
+conn = sqlite3.connect(f'./collection/data-{dataname}.db')
 conn.row_factory = sqlite3.Row
 cur = conn.cursor()
 
@@ -87,6 +94,8 @@ docs = [x['content'] for x in cur.execute('SELECT content FROM News') if x['cont
 
 print('importing model')
 model = SentenceTransformer('sentence-transformers/xlm-r-100langs-bert-base-nli-stsb-mean-tokens')
+
+n_gram_range = (0, 1)
 
 mss_ls = []
 mmr_ls = []
@@ -102,8 +111,6 @@ for doc in tqdm(docs, desc='extracting keywords'):
 
     # print('품사 태깅 10개만 출력 :',tokenized_doc[:10])
     # print('명사 추출 :',tokenized_nouns)
-
-    n_gram_range = (0, 3)
 
     try:
         count_vector = CountVectorizer(ngram_range=n_gram_range).fit([tokenized_nouns])
@@ -142,7 +149,7 @@ mmr_c = Counter(mmr_ls)
 mss_df = pd.DataFrame(mss_c.most_common())
 mmr_df = pd.DataFrame(mmr_c.most_common())
 
-mss_df.to_csv(f'mss_{dataname}_{"-".join(n_gram_range)}.csv', index=False, encoding='utf-8-sig')
-mmr_df.to_csv(f'mmr_{dataname}_{"-".join(n_gram_range)}.csv', index=False, encoding='utf-8-sig')
-
 print(mss_c.most_common(20), mmr_c.most_common(20), sep='\n\n')
+
+mss_df.to_csv(f'./extract/mss_{dataname}_{"-".join(map(str, n_gram_range))}.csv', index=False, encoding='utf-8-sig')
+mmr_df.to_csv(f'./extract/mmr_{dataname}_{"-".join(map(str, n_gram_range))}.csv', index=False, encoding='utf-8-sig')
