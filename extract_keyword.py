@@ -15,7 +15,7 @@ import sqlite3
 
 # collection 폴더에서 불러올 DB입니다. 
 # DB 파일 이름이 data-221107-111306.db 이면 해당 변수는 '221107-111306'이 됩니다.
-dataname = '221106_120913'
+dataname = '221105-202616'
 
 # 아래는 M1 아키텍처 기반 MacOS 전용 설정입니다. M1에서는 JVM 경로를 수동으로 지정해야 했습니다.
 JVM_PATH = '/Library/Java/JavaVirtualMachines/zulu-15.jdk/Contents/Home/bin/java'
@@ -95,7 +95,7 @@ docs = [x['content'] for x in cur.execute('SELECT content FROM News') if x['cont
 print('importing model')
 model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
 
-n_gram_range = (0, 1)
+n_gram_range = (0, 3)
 
 mss_ls = []
 mmr_ls = []
