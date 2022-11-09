@@ -15,15 +15,15 @@ import sqlite3
 
 # collection 폴더에서 불러올 DB입니다. 
 # DB 파일 이름이 data-221107-111306.db 이면 해당 변수는 '221107-111306'이 됩니다.
-dataname = '221107-111306'
+dataname = '221106_120913'
 
 # 아래는 M1 아키텍처 기반 MacOS 전용 설정입니다. M1에서는 JVM 경로를 수동으로 지정해야 했습니다.
-# JVM_PATH = '/Library/Java/JavaVirtualMachines/zulu-15.jdk/Contents/Home/bin/java'
-# okt = Okt(jvmpath=JVM_PATH)
+JVM_PATH = '/Library/Java/JavaVirtualMachines/zulu-15.jdk/Contents/Home/bin/java'
+okt = Okt(jvmpath=JVM_PATH)
 
 ###
 
-okt = Okt()
+# okt = Okt()
 
 def max_sum_sim(doc_embedding, candidate_embeddings, words, top_n, nr_candidates):
     # 문서와 각 키워드들 간의 유사도
@@ -93,7 +93,7 @@ print('filtering empty content')
 docs = [x['content'] for x in cur.execute('SELECT content FROM News') if x['content']]
 
 print('importing model')
-model = SentenceTransformer('sentence-transformers/xlm-r-100langs-bert-base-nli-stsb-mean-tokens')
+model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
 
 n_gram_range = (0, 1)
 
