@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 # 뉴스 기사를 수집하는 시점입니다.
 # dt = datetime.datetime.now().strftime('%Y%m%d')
-dt = '20170310'
+dt = '20221114'
 
 ###
 
